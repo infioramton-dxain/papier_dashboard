@@ -1,0 +1,19 @@
+[paper]
+# PAPIER's SQLite file. Dashboard opens it read-only.
+db = "/home/claucodxain/Projects/PAPIER/data/papier.db"
+
+[data]
+# When true, dashboard reads PAPIER's papier.db. When false, uses deterministic
+# mock data (handy for design iteration before any backfill exists).
+live = true
+fallback_to_mock = true   # if live=true but DB is missing/empty, fall back to mock
+
+[ui]
+# Fixed 1920x1080 desktop terminal — do NOT loosen for mobile.
+recency_hours = 1         # < this many hours == "fresh" (the only use of accent cyan)
+default_tab = "pulse"     # pulse | symbol | sector | pipeline
+cache_ttl_seconds = 3600
+
+[universe]
+# Optional override; if blank, dashboard derives universe from the sentiment table.
+symbols_csv = ""

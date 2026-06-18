@@ -1,0 +1,32 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- private artifacts (Claude Design handoff, scratch, etc.) ---
+Claude/
+
+# --- python ---
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# --- tooling ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- streamlit ---
+.streamlit/secrets.toml
+
+# --- editor / OS noise ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
