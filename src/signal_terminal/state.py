@@ -20,6 +20,15 @@ DEFAULTS = {
     "corr_metric":     "phi",        # "phi" (Pearson on binary) or "jaccard" (|A∩B|/|A∪B|)
     "corr_min_symbols": 1,           # drop drivers appearing on fewer than this many symbols
     "corr_syms_page":  1,            # 1-indexed page for the SYMBOLS COVERED table
+    # ---- Factors / Cohorts / Events analytics sidebar ----
+    "an_date_start":   None,
+    "an_date_end":     None,
+    "an_symbols":      [],           # empty = all
+    "an_sectors":      [],           # empty = all
+    "an_min_articles": 1,
+    "an_grain":        "daily",      # hourly | daily | weekly
+    "an_status":       ["ok"],
+    "an_ai_takeaways": True,
 }
 
 

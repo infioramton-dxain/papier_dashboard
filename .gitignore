@@ -25,6 +25,9 @@ dist/
 # --- streamlit ---
 .streamlit/secrets.toml
 
+# --- analytics cache (Layer 2 LLM takeaways + parquet pivots) ---
+data/cache/
+
 # --- editor / OS noise ---
 .vscode/
 .idea/
