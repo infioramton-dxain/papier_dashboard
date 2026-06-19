@@ -11,7 +11,9 @@ from signal_terminal import state
 from signal_terminal.components.styling import inject as inject_css
 from signal_terminal.config import load as load_config
 from signal_terminal.style import DIM, FRESH, TEXT_HI
-from signal_terminal.views import pipeline_health, pulse, sector_lens, symbol_detail
+from signal_terminal.views import (driver_correlation, driver_detail,
+                                    pipeline_health, pulse, sector_lens,
+                                    symbol_detail)
 
 st.set_page_config(
     page_title="Signal Terminal",
@@ -48,8 +50,10 @@ with bar[2]:
 # Note: st.tabs is client-side, so programmatic switching from a cross-filter
 # isn't supported. Cross-filter writes `selected_symbol` to session_state;
 # clicking the SYMBOL DETAIL tab picks it up.
-pulse_tab, symbol_tab, sector_tab, pipeline_tab = st.tabs([
-    "TODAY'S PULSE", "SYMBOL DETAIL", "SECTOR LENS", "PIPELINE HEALTH",
+(pulse_tab, symbol_tab, sector_tab, driver_tab, driver_corr_tab,
+ pipeline_tab) = st.tabs([
+    "TODAY'S PULSE", "SYMBOL DETAIL", "SECTOR LENS",
+    "DRIVER DETAIL", "DRIVER CORRELATION", "PIPELINE HEALTH",
 ])
 
 with pulse_tab:
@@ -58,5 +62,9 @@ with symbol_tab:
     symbol_detail.render(cfg)
 with sector_tab:
     sector_lens.render(cfg)
+with driver_tab:
+    driver_detail.render(cfg)
+with driver_corr_tab:
+    driver_correlation.render(cfg)
 with pipeline_tab:
     pipeline_health.render(cfg)

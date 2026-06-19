@@ -54,17 +54,44 @@ def universe_qa(cfg: Config) -> dict:
     return mockdata.universe_qa_mock()
 
 
-def trending_themes(cfg: Config) -> pd.DataFrame:
+def trending_themes(cfg: Config, hours: float = 24.0, limit: int = 20) -> pd.DataFrame:
     if _use_live(cfg):
-        return queries.trending_themes(cfg.db_path)
+        return queries.trending_themes(cfg.db_path, hours=hours, limit=limit)
     return mockdata.trending_themes_mock()
 
 
-def symbols_for_theme(cfg: Config, canonical_term: str) -> list[str]:
+def symbols_for_theme(cfg: Config, canonical_term: str, hours: float = 24.0) -> list[str]:
     if _use_live(cfg):
-        return queries.symbols_for_theme(cfg.db_path, canonical_term)
+        return queries.symbols_for_theme(cfg.db_path, canonical_term, hours=hours)
     df = mockdata.universe_latest_mock()
     return df["symbol"].sample(min(20, len(df)), random_state=hash(canonical_term) & 0xFFFFFFFF).tolist()
+
+
+def driver_symbols(cfg: Config, canonical_term: str, hours: float = 24.0) -> pd.DataFrame:
+    if _use_live(cfg):
+        return queries.driver_symbols(cfg.db_path, canonical_term, hours=hours)
+    return mockdata.driver_symbols_mock(canonical_term)
+
+
+def symbols_carrying_drivers(cfg: Config, hours: float = 24.0,
+                              canonical_terms: list[str] | None = None) -> pd.DataFrame:
+    if _use_live(cfg):
+        return queries.symbols_carrying_drivers(
+            cfg.db_path, hours=hours, canonical_terms=canonical_terms,
+        )
+    return mockdata.symbols_carrying_drivers_mock(canonical_terms=canonical_terms)
+
+
+def driver_correlation_matrix(cfg: Config, hours: float = 24.0, limit: int = 12,
+                               metric: str = "phi", min_symbols: int = 1) -> pd.DataFrame:
+    if _use_live(cfg):
+        return queries.driver_correlation_matrix(
+            cfg.db_path, hours=hours, limit=limit,
+            metric=metric, min_symbols=min_symbols,
+        )
+    return mockdata.driver_correlation_matrix_mock(
+        metric=metric, min_symbols=min_symbols,
+    )
 
 
 def symbol_history(cfg: Config, symbol: str, days: int = 180) -> pd.DataFrame:
@@ -77,6 +104,12 @@ def symbol_drivers(cfg: Config, symbol: str, window_start: str) -> pd.DataFrame:
     if _use_live(cfg):
         return queries.symbol_drivers(cfg.db_path, symbol, window_start)
     return mockdata.symbol_drivers_mock(symbol, window_start)
+
+
+def symbol_drivers_window(cfg: Config, symbol: str, hours: float = 24.0) -> pd.DataFrame:
+    if _use_live(cfg):
+        return queries.symbol_drivers_window(cfg.db_path, symbol, hours=hours)
+    return mockdata.symbol_drivers_window_mock(symbol, hours=hours)
 
 
 def sector_aggregates(cfg: Config) -> pd.DataFrame:

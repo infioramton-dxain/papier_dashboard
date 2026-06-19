@@ -156,6 +156,37 @@ def symbol_history_mock(symbol: str, days: int = 180) -> pd.DataFrame:
     return df
 
 
+def symbol_drivers_window_mock(symbol: str, hours: float = 24.0) -> pd.DataFrame:
+    """Aggregated drivers for one symbol across a lookback window — mock."""
+    rng = random.Random(hash((symbol, int(hours))) & 0xFFFFFFFF)
+    pool = [
+        ("export-control", -0.9), ("ipo", 0.6), ("analyst-downgrade", -0.85),
+        ("contract-award", 0.92), ("ai-boom", 0.55), ("cloud-deal", 0.5),
+        ("price-target-raise", 0.9), ("partnership", 0.4), ("china-ban", -0.9),
+        ("fda-approval", 0.85), ("guidance-cut", -0.8),
+    ]
+    k = max(2, int(rng.random() * 6) + 2)
+    chosen = rng.sample(pool, min(k, len(pool)))
+    rows = []
+    for term, base_sent in chosen:
+        n_win = max(1, int(rng.random() * 4) + 1)
+        last_hrs_ago = round(rng.random() * float(hours), 2)
+        rows.append({
+            "canonical_term":           term,
+            "n_windows":                n_win,
+            "max_weight":               round(0.45 + rng.random() * 0.55, 2),
+            "mean_weight":              round(0.35 + rng.random() * 0.5, 2),
+            "mean_term_sentiment":      round(max(-1.0, min(1.0,
+                                                base_sent + (rng.random() - 0.5) * 0.3)), 2),
+            "first_window_start":       "2026-06-12T00:00:00Z",
+            "last_window_start":        "2026-06-17T00:00:00Z",
+            "hours_since_last_window":  last_hrs_ago,
+        })
+    return (pd.DataFrame(rows)
+              .sort_values(["max_weight", "n_windows"], ascending=[False, False])
+              .reset_index(drop=True))
+
+
 def symbol_drivers_mock(symbol: str, window_start: str) -> pd.DataFrame:
     rng = random.Random(hash((symbol, window_start)) & 0xFFFFFFFF)
     pool = [
@@ -174,6 +205,96 @@ def symbol_drivers_mock(symbol: str, window_start: str) -> pd.DataFrame:
     } for (term, ts) in chosen]
     df = pd.DataFrame(rows).sort_values("weight", ascending=False)
     return df
+
+
+def driver_symbols_mock(canonical_term: str, hours: float = 24.0) -> pd.DataFrame:
+    """Deterministic affected-symbols rollup for one driver. Seeded by the term."""
+    seed = hash(canonical_term) & 0xFFFFFFFF
+    rng = random.Random(seed)
+    base = universe_latest_mock()
+    n = min(len(base), max(8, int(rng.random() * 18) + 8))
+    picked = base.sample(n=n, random_state=seed).reset_index(drop=True)
+    rows = []
+    for _, r in picked.iterrows():
+        weight = round(0.35 + rng.random() * 0.6, 3)
+        term_sent = round(max(-1.0, min(1.0, r["sentiment"] * 0.6
+                                         + (rng.random() - 0.5) * 0.7)), 3)
+        nw = max(1, int(rng.random() * 4) + 1)
+        rows.append({
+            "symbol": r["symbol"],
+            "sector": r["sector"],
+            "weight": weight,
+            "term_sentiment": term_sent,
+            "n_windows_with_term": nw,
+            "latest_sentiment": r["sentiment"],
+            "latest_materiality": r["materiality"],
+            "latest_geo_risk": r["geo_risk"],
+            "latest_article_count": int(r["article_count"]),
+            "hours_since_published": r["hours_since_published"],
+            "fresh": bool(r["fresh"]),
+        })
+    df = pd.DataFrame(rows).sort_values("weight", ascending=False).reset_index(drop=True)
+    return df
+
+
+def symbols_carrying_drivers_mock(hours: float = 24.0,
+                                    canonical_terms: list[str] | None = None) -> pd.DataFrame:
+    """Per-symbol summary across a set of drivers — deterministic mock."""
+    cols = [
+        "symbol", "sector", "n_drivers", "top_drivers",
+        "mean_weight", "mean_term_sentiment",
+        "latest_sentiment", "latest_materiality", "latest_geo_risk",
+        "latest_article_count", "hours_since_published", "fresh",
+    ]
+    if not canonical_terms:
+        return pd.DataFrame(columns=cols)
+    base = universe_latest_mock()
+    rng = random.Random(hash(tuple(sorted(canonical_terms))) & 0xFFFFFFFF)
+    n = min(len(base), max(10, int(rng.random() * 18) + 10))
+    picked = base.sample(n=n, random_state=rng.randint(0, 1 << 30)).reset_index(drop=True)
+    out = []
+    for _, r in picked.iterrows():
+        n_drv = max(1, int(rng.random() * min(5, len(canonical_terms))) + 1)
+        chosen = rng.sample(canonical_terms, min(n_drv, len(canonical_terms)))
+        out.append({
+            "symbol": r["symbol"],
+            "sector": r["sector"],
+            "n_drivers": len(chosen),
+            "top_drivers": ", ".join(chosen[:3]),
+            "mean_weight": round(0.3 + rng.random() * 0.65, 3),
+            "mean_term_sentiment": round((rng.random() - 0.5) * 1.6, 3),
+            "latest_sentiment": r["sentiment"],
+            "latest_materiality": r["materiality"],
+            "latest_geo_risk": r["geo_risk"],
+            "latest_article_count": int(r["article_count"]),
+            "hours_since_published": r["hours_since_published"],
+            "fresh": bool(r["fresh"]),
+        })
+    return (pd.DataFrame(out)[cols]
+              .sort_values(["n_drivers", "mean_weight"], ascending=[False, False])
+              .reset_index(drop=True))
+
+
+def driver_correlation_matrix_mock(hours: float = 24.0, limit: int = 12,
+                                    metric: str = "phi", min_symbols: int = 1) -> pd.DataFrame:
+    """Symmetric mock association matrix. `metric` switches range; `min_symbols`
+    is a no-op in mock (deterministic terms are kept regardless)."""
+    terms = trending_themes_mock()["canonical_term"].head(limit).tolist()
+    rng = random.Random(42 if metric == "phi" else 43)
+    n = len(terms)
+    data = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i, n):
+            if i == j:
+                data[i][j] = 1.0
+            else:
+                if metric == "jaccard":
+                    v = round(rng.random() ** 2, 3)        # skewed low, in [0,1]
+                else:
+                    v = round((rng.random() - 0.45) * 0.9, 3)  # ~[-0.4, +0.5]
+                data[i][j] = v
+                data[j][i] = v
+    return pd.DataFrame(data, index=terms, columns=terms)
 
 
 def sector_aggregates_mock() -> pd.DataFrame:
