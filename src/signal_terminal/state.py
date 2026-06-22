@@ -14,6 +14,7 @@ DEFAULTS = {
     "selected_driver": None,         # canonical_term focused in Driver Detail
     "driver_page":     1,            # 1-indexed page for the affected-symbols table
     "driver_pill_page":1,            # 1-indexed page for the pill strip
+    "driver_alpha":    None,         # letter filter for the pill strip (A..Z) or None = ALL
     "driver_hours":    168,          # lookback (in hours) for Driver Detail. 168 = 7d
     "driver_corr_cell": None,        # (row_term, col_term, phi) of last clicked corr cell
     "corr_band":       (-1.0, 1.0),  # (low, high) shown in correlation heatmap (metric-relative)

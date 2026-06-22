@@ -24,6 +24,7 @@ from signal_terminal.views._common import hint, window_label, window_selector
 
 PAGE_SIZE = 10
 PILLS_PER_PAGE = 12
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 # ---------- driver picker ----------
@@ -31,6 +32,47 @@ def _pill_label(row: dict) -> str:
     dot = "●" if abs(row["mean_term_sentiment"]) > 0.1 else "·"
     badge = f"  ◆{int(row['fresh_count'])}" if row.get("fresh_count") else ""
     return f"{dot}  {row['canonical_term']}  ·{int(row['n_symbols'])}{badge}"
+
+
+def _set_alpha(letter: str | None) -> None:
+    if st.session_state.get("driver_alpha") != letter:
+        st.session_state["driver_alpha"] = letter
+        st.session_state["driver_pill_page"] = 1
+
+
+def _alpha_bar(themes: pd.DataFrame, active_letter: str | None) -> None:
+    """A row of 27 buttons (ALL + A..Z). Disabled letters have no drivers."""
+    if themes.empty:
+        return
+    first_letters = (
+        themes["canonical_term"].astype(str).str.upper().str[:1]
+    )
+    counts = first_letters.value_counts().to_dict()
+
+    cols = st.columns(27, gap="small")
+    with cols[0]:
+        if st.button(
+            "ALL",
+            key="driver_alpha_ALL",
+            use_container_width=True,
+            type=("primary" if active_letter is None else "secondary"),
+            help=f"{len(themes)} drivers (trending order)",
+        ):
+            _set_alpha(None)
+            st.rerun()
+    for idx, ch in enumerate(ALPHABET, start=1):
+        n = int(counts.get(ch, 0))
+        with cols[idx]:
+            if st.button(
+                ch,
+                key=f"driver_alpha_{ch}",
+                use_container_width=True,
+                type=("primary" if active_letter == ch else "secondary"),
+                disabled=(n == 0),
+                help=(f"{n} drivers starting with {ch}" if n else f"no drivers starting with {ch}"),
+            ):
+                _set_alpha(ch)
+                st.rerun()
 
 
 def _driver_picker(themes: pd.DataFrame, active: str | None) -> None:
@@ -42,17 +84,40 @@ def _driver_picker(themes: pd.DataFrame, active: str | None) -> None:
         )
         return
 
-    total = len(themes)
+    active_letter = st.session_state.get("driver_alpha")
+    _alpha_bar(themes, active_letter)
+
+    if active_letter:
+        view = themes[
+            themes["canonical_term"].astype(str).str.upper().str.startswith(active_letter)
+        ].sort_values("canonical_term", kind="stable").reset_index(drop=True)
+    else:
+        view = themes.reset_index(drop=True)
+
+    total = len(view)
+    if total == 0:
+        st.markdown(
+            f"<div class='panel' style='color:{FAINT}; margin-top:8px;'>"
+            f"no drivers starting with <b>{active_letter}</b> in this window."
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
     page_count = max(1, (total + PILLS_PER_PAGE - 1) // PILLS_PER_PAGE)
     page = int(st.session_state.get("driver_pill_page", 1))
     page = max(1, min(page, page_count))
 
     header_cols = st.columns([3, 1, 2, 1, 1])
     with header_cols[0]:
-        active_html = (
-            f"<span style='color:{FRESH}'>active: {active}</span>"
-            if active else f"<span style='color:{FAINT}'>pick a driver to drill in</span>"
-        )
+        if active:
+            active_html = f"<span style='color:{FRESH}'>active: {active}</span>"
+        elif active_letter:
+            active_html = (
+                f"<span style='color:{DIM}'>filter: {active_letter}  ·  pick a driver to drill in</span>"
+            )
+        else:
+            active_html = f"<span style='color:{FAINT}'>pick a driver to drill in</span>"
         st.markdown(
             f"<div class='panel-title'>DRIVERS — {active_html}</div>",
             unsafe_allow_html=True,
@@ -82,7 +147,7 @@ def _driver_picker(themes: pd.DataFrame, active: str | None) -> None:
             st.rerun()
 
     start = (page - 1) * PILLS_PER_PAGE
-    rows = themes.iloc[start:start + PILLS_PER_PAGE].to_dict("records")
+    rows = view.iloc[start:start + PILLS_PER_PAGE].to_dict("records")
     for chunk_start in (0, 6):
         chunk = rows[chunk_start:chunk_start + 6]
         if not chunk:
@@ -241,6 +306,7 @@ def _on_window_change(_new_hours: int) -> None:
     st.session_state["selected_driver"] = None
     st.session_state["driver_page"] = 1
     st.session_state["driver_pill_page"] = 1
+    st.session_state["driver_alpha"] = None
 
 
 def render(cfg: Config) -> None:
